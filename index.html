@@ -1,266 +1,314 @@
+
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Three.js ・ Leap Controls</title>
-    <meta charset="utf-8">
-    <meta name="author" content="Torsten Sprenger">
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <link href='http://fonts.googleapis.com/css?family=Fauna+One' rel='stylesheet' type='text/css'>
-    <link href='css/style.css' rel='stylesheet' type='text/css'>
-    <script type="text/javascript" src="js/Detector.js"></script>
-    <script type="text/javascript" src="js/jquery.min.js"></script>
-    <script type="text/javascript" src="js/three.min.js"></script>
-    <script type="text/javascript" src="js/leap.min.js"></script>
-    <script type="text/javascript" src="LeapCameraControls.js"></script>
-    <script type="text/javascript" src="LeapObjectControls.js"></script>
-    <script type="text/javascript">
-      var camera, scene, renderer, projector, light;
-      var objects = [], objectsControls = [], cameraControls;
-      var coords1, coords2, coords3;
-      var lastControlsIndex = -1, controlsIndex = -1, index = -1;
+<html lang="en">
+	<head>
+		<!--
+		Sprite3D.js example file
+		Visit the internets for documentation, updates and examples.
+		https://github.com/boblemarin/Sprite3D.js
+		http://minimal.be/lab/Sprite3D
 
-      function init() {
-        // is webgl supported?
-        if (!Detector.webgl) {
-          Detector.addGetWebGLMessage();
-          return false;
-        };
+		Copyright (c) 2010 boblemarin http://www.minimal.be
 
-        // renderer
-        renderer = new THREE.WebGLRenderer({antialias: true});
-        renderer.setSize($(window).width(), $(window).height());
-        renderer.setClearColor(0xffffff, 1);
-        $("#container").append(renderer.domElement);
+		Permission is hereby granted, free of charge, to any person
+		obtaining a copy of this software and associated documentation
+		files (the "Software"), to deal in the Software without
+		restriction, including without limitation the rights to use,
+		copy, modify, merge, publish, distribute, sublicense, and/or sell
+		copies of the Software, and to permit persons to whom the
+		Software is furnished to do so, subject to the following
+		conditions:
 
-        // camera
-        camera = new THREE.PerspectiveCamera(25, $(window).width()/$(window).height(), 0.1, 10000);
-        camera.position.x = 500;
-        camera.position.y = 500;
-        camera.position.z = 500;
-        var origin = new THREE.Vector3(0, 0, 0);
-        camera.lookAt(origin);
+		The above copyright notice and this permission notice shall be
+		included in all copies or substantial portions of the Software.
 
-        // leap camera controls
-        cameraControls = new THREE.LeapCameraControls(camera);
+		THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+		EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+		OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+		NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+		HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+		WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+		FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+		OTHER DEALINGS IN THE SOFTWARE.
+		-->
+		<meta charset="utf-8" />
+		<meta name='HandheldFriendly' content='True' />
+		<meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0' />
+		<title>Butterflies</title>
 
-        cameraControls.rotateEnabled  = true;
-        cameraControls.rotateSpeed    = 3;
-        cameraControls.rotateHands    = 1;
-        cameraControls.rotateFingers  = [2, 3];
-        
-        cameraControls.zoomEnabled    = true;
-        cameraControls.zoomSpeed      = 6;
-        cameraControls.zoomHands      = 1;
-        cameraControls.zoomFingers    = [4, 5];
-        cameraControls.zoomMin        = 50;
-        cameraControls.zoomMax        = 2000;
-        
-        cameraControls.panEnabled     = true;
-        cameraControls.panSpeed       = 2;
-        cameraControls.panHands       = 2;
-        cameraControls.panFingers     = [6, 12];
-        cameraControls.panRightHanded = false; // for left-handed person
 
-        // world
-        scene = new THREE.Scene(); 
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+		
+<!-- =========================================================== -->		
+<!-- CSS SECTION =============================================== -->
+<!-- =========================================================== -->
 
-        // projector
-        projector = new THREE.Projector();       
+		<style>
+		
+html, body { height: 100%; }
 
-        // camera target coordinate system
-        coords1 = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), origin, 75, 0xcccccc);
-        coords2 = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), origin, 75, 0xcccccc);
-        coords3 = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), origin, 75, 0xcccccc);
-        scene.add(coords1);
-        scene.add(coords2);
-        scene.add(coords3);
+body {
+	color: black;
+	margin: 0px;
+	padding: 0px;
+	overflow: hidden;
+	background: url("img/garden.jpg") left bottom repeat-x;
+    background-size: 2420px 1200px;
+}
 
-        // world coordinate system (thin dashed helping lines)
-        var lineGeometry = new THREE.Geometry();
-        var vertArray = lineGeometry.vertices;
-        vertArray.push(new THREE.Vector3(1000, 0, 0), origin, new THREE.Vector3(0, 1000, 0), origin, new THREE.Vector3(0, 0, 1000));
-        lineGeometry.computeLineDistances();
-        var lineMaterial = new THREE.LineDashedMaterial({color: 0xcccccc, dashSize: 1, gapSize: 2});
-        var coords = new THREE.Line(lineGeometry, lineMaterial);
-        scene.add(coords);
+.body {
+	background: url('img/body.png');
+	width: 203px;
+	height: 177px;
+}
 
-        // cubes
-        for (var i = 0; i < 20; i ++) {
-          var geometry = new THREE.CubeGeometry(Math.random()*60, Math.random()*60, Math.random()*60);
-          var object = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({color: 0xefefef}));
-          object.position.x = Math.random()* 300 - 150;
-          object.position.y = Math.random()* 300 - 150;
-          object.position.z = Math.random()* 200 - 100;
+.wing {
+	background: url('img/winga.png');
+	width: 191px;
+	height: 343px;
+}
 
-          object.rotation.x = Math.random()*2*Math.PI;
-          object.rotation.y = Math.random()*2*Math.PI;
-          object.rotation.z = Math.random()*2*Math.PI;
+.error {
+	background-color: red;
+	color: black;
+	text-align: center;
+	font-size: 2em;
+	padding: 50px;
+	margin-top: 20%;
+}
 
-          object.receiveShadow = true;
+.error a {
+	color: black;
+}
+			
+		</style>
 
-          // leap object controls
-          var objectControls = new THREE.LeapObjectControls(camera, object);
+		<script type="text/javascript" src="js/RequestAnimationFrame.js"></script>
+		<script type="text/javascript" src="js/Stats.js"></script>
+		<script type="text/javascript" src="js/Sprite3D.js"></script>
+		<script type="text/javascript">
 
-          objectControls.rotateEnabled  = true;
-          objectControls.rotateSpeed    = 3;
-          objectControls.rotateHands    = 1;
-          objectControls.rotateFingers  = [2, 3];
-          
-          objectControls.scaleEnabled   = true;
-          objectControls.scaleSpeed     = 3;
-          objectControls.scaleHands     = 1;
-          objectControls.scaleFingers   = [4, 5];
-          
-          objectControls.panEnabled     = true;
-          objectControls.panSpeed       = 3;
-          objectControls.panHands       = 2;
-          objectControls.panFingers     = [6, 12];
-          objectControls.panRightHanded = false; // for left-handed person
+		var stage,
+			container,
+			butterflies,
+			bgs,
+			bgp = 0,
+			n = 10,
+			stats,
+			mDown = false,
+			lastTime,
+			mx, my, mID,
+			autorotate = true,
+			t = 0, i;
 
-          scene.add(object);
-          objects.push(object);
-          objectsControls.push(objectControls);
-        };
+		addEventListener( "load", init, false );
 
-        // light
-        light = new THREE.PointLight(0xefefef);
-        light.position = camera.position;
-        scene.add(light);
+		function init() {
+			
+			//http://minimal.be/lab/Sprite3D/butterflies/
+			if ( Sprite3D.isSupported() )
+			{
+				stage = Sprite3D.createCenteredContainer();
 
-        // listen to resize event
-        window.addEventListener('resize', onWindowResize, false);
+				container = stage.addChild( 
+					new Sprite3D()
+						.setPosition( 0, 0, -1600 )
+						.setRotateFirst(false)
+						.update() 
+				);
 
-        // render (if no leap motion controller is detected, then this call is needed in order to see the plot)
-        render();
-      };
-      
-      function changeControlsIndex() {
-        if (lastControlsIndex == controlsIndex) {
-          if (index != controlsIndex && controlsIndex > -2) {
-            // new object or camera to control
-            if (controlsIndex > -2) {
-              if (index > -1) objects[index].material.color.setHex(0xefefef);
-              index = controlsIndex;
-              if (index > -1) objects[index].material.color.setHex(0xff0000);
-            }
-          };
-        }; 
-        lastControlsIndex = controlsIndex;
-      };
+				butterflies = [];
+				var b;
 
-      function transform(tipPosition, w, h) {
-        var width = 150;
-        var height = 150;
-        var minHeight = 100;
+				for( i=0; i<n; i++ ) {
+					b = new Butterfly();
+					container.addChild( b.body );
+					b.body
+						.setPosition( Math.random() * 2000 - 1000, Math.random() * 1200 - 600, Math.random() * 2000 - 1000 )
+						.setRotation( Math.random() * 28 - 14, Math.random() * 360, Math.random() * 16 - 8 )
+						.update();
+					butterflies.push( b );
+				}
 
-        var ftx = tipPosition[0];
-        var fty = tipPosition[1];
-        ftx = (ftx > width ? width - 1 : (ftx < -width ? -width + 1 : ftx));
-        fty = (fty > 2*height ? 2*height - 1 : (fty < minHeight ? minHeight + 1 : fty));
-        var x = THREE.Math.mapLinear(ftx, -width, width, 0, w);
-        var y = THREE.Math.mapLinear(fty, 2*height, minHeight, 0, h);
-        return [x, y];
-      };
+				bgs = document.body.style;
 
-      function showCursor(frame) {
-        var hl = frame.hands.length;
-        var fl = frame.pointables.length;
+				var p = navigator.platform;
 
-        if (hl == 1 && fl == 1) {
-          var f = frame.pointables[0];
-          var cont = $(renderer.domElement);
-          var offset = cont.offset();
-          var coords = transform(f.tipPosition, cont.width(), cont.height());
-          $("#cursor").css('left', offset.left + coords[0] - (($("#cursor").width() - 1)/2 + 1));
-          $("#cursor").css('top', offset.top + coords[1] - (($("#cursor").height() - 1)/2 + 1));
-        } else {
-          $("#cursor").css('left', -1000);
-          $("#cursor").css('top', -1000);
-        };
-      };
+				autorotate = !( p == "iPad" || p == "iPod" || p == "iPhone" );
 
-      function focusObject(frame) {
-        var hl = frame.hands.length;
-        var fl = frame.pointables.length;
+				addEventListener( "mousedown", onMouseDown );
+				addEventListener( "mousemove", onMouseMove );
+				addEventListener( "mouseup", onMouseUp );
 
-        if (hl == 1 && fl == 1) {
-          var f = frame.pointables[0];
-          var cont = $(renderer.domElement);
-          var coords = transform(f.tipPosition, cont.width(), cont.height());
-          var vpx = (coords[0]/cont.width())*2 - 1;
-          var vpy = -(coords[1]/cont.height())*2 + 1;
-          var vector = new THREE.Vector3(vpx, vpy, 0.5);
-          projector.unprojectVector(vector, camera);
-          var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
-          var intersects = raycaster.intersectObjects(objects);
-          if (intersects.length > 0) { 
-            var i = 0;
-            while(!intersects[i].object.visible) i++;
-            var intersected = intersects[i];
-            return objects.indexOf(intersected.object);
-          } else {
-            return -1;
-          };
-        };
+				document.addEventListener( "touchstart", onTouchStart );
+				document.addEventListener( "touchmove", onTouchMove );
+				document.addEventListener( "touchend", onTouchEnd );
 
-        return -2;
-      };
+				lastTime = new Date().getTime();
+				animate();
+			}
+			else
+			{
+				var d = document.createElement("div");
+				d.className = "error";
+				d.innerHTML = 'Ooooh. I\'m so sorry...<br/><br/>Your browser does not support 3D CSS transforms.<br/>You should try to view this page with <a href="http://www.google.com/chrome/">Chrome</a> or <a href="http://www.apple.com/safari/">Safari</a>.';
+				document.body.appendChild(d);
+			}
+		}	
 
-      function render() {
-        renderer.render(scene, camera);
-      };
+		/* ******* TOUCH ********* */
 
-      function onWindowResize() {
-        camera.aspect = $(window).width()/$(window).height();
-        camera.updateProjectionMatrix();
-        renderer.setSize($(window).width(), $(window).height());
-        render();
-      };
+		function onTouchStart( event ) {
+			if ( !mDown )
+			{
+				var t = event.changedTouches[0];
+				mDown = true;
+				mID = t.identifier;
+				mx = t.pageX;
+				my = t.pageY;
+				event.preventDefault();
+			}
+		}
 
-      $(function(){
-        init();
+		function onTouchMove( event ) {
+			if ( mDown )
+			{
+				var t = event.changedTouches[0];
+				if ( t.identifier == mID ) 
+				{
+					var nx = t.pageX, ny = t.pageY;
+					rotateContainer( nx - mx, ny - my );
+					mx = nx;
+					my = ny;
+					event.preventDefault();
+				}
+			}	
+		}
 
-        // leap loop
-        Leap.loop(function(frame) {
-          // show cursor
-          showCursor(frame);
+		function onTouchEnd( event ) {
+			if ( mDown )
+			{
+				var t = event.changedTouches[0];
+				if ( t.identifier == mID ) 
+				{
+					mDown = false;
+					event.preventDefault();
+				}
+			}
+		}
 
-          // set correct camera control
-          controlsIndex = focusObject(frame);
-          if (index == -1) {
-            cameraControls.update(frame);
-          } else {
-            objectsControls[index].update(frame);
-          };
+		/* ******* MOUSE ********* */
 
-          // custom modifications (here: show coordinate system always on target and light movement)
-          coords1.position = cameraControls.target;
-          coords2.position = cameraControls.target;
-          coords3.position = cameraControls.target;
-          light.position   = camera.position;
+		function onMouseDown( event ) {
+			mDown = true;
+			mx = event.pageX;
+			my = event.pageY;
+			event.preventDefault();
+		}
 
-          render();
-        });
+		function onMouseMove( event ) {
+			if ( mDown )
+			{
+				var nx = event.pageX, ny = event.pageY;
+				rotateContainer( nx - mx, ny - my );
+				mx = nx;
+				my = ny;
+				event.preventDefault();
+			}
 
-        // detect controls change
-        setInterval(changeControlsIndex, 250);
-      });
-    </script>   
-  </head>
+		}
 
-  <body>
-    <div id="info">
-      <h3><b>threeleapcontrols</b> ・ <a href="http://leapmotion.com">Leap</a> Controls for <a href="http://threejs.org">Three.js</a></h3>
+		function onMouseUp( event ) {
+			mDown = false;
+			event.preventDefault();
+		}
 
-      <h4>Camera &amp; Object Controls</h4>
 
-      <b>ROTATING</b> ➞ 1 Hand &amp; 2-3 Fingers ・  <b>ZOOMING/SCALING</b> ➞ 1 Hand &amp; 4-5 Fingers  ・  <b>PANNING</b> ➞ 2 Hands &amp; 6-10 Fingers
+		/* ******* BUTTERFLIES ANIMATION ********* */
 
-      <h4>Switch between Camera &amp; Object Mode</h4>
+		function animate() {
+			requestAnimationFrame( animate );
+			update();
+		}
 
-      <b>SWITCHING</b> ➞ 1 Hand &amp; 1 Finger &amp; Choose object or nothing
-    </div>
-    <div id="container"></div>
-    <div id="cursor"></div>
-  </body>
+		function update() {
+			var newTime = new Date().getTime(),
+				delta = newTime - lastTime;
+			lastTime = newTime;
+
+			t += 0.028 * delta;
+			for( i=0; i<n; i++ ) { 
+				butterflies[i].flap(t); 
+			}
+
+			if ( autorotate && !mDown ) rotateContainer(1);
+		//	stats.update();
+		}
+
+		function rotateContainer( v, w ) {
+			// .moveZ( -w )
+			container.rotate( 0, v *.2, 0 ).update();
+			bgp -= v;
+			bgs.backgroundPosition = bgp + "px bottom";
+		}
+
+		/* ******* BUTTERFLIES CLASS ********* */
+
+		function Butterfly() {
+			var lwing, rwing;
+
+			this.body = new Sprite3D()
+					.setClassName("body")
+					.setRotateFirst(false)
+					.setRegistrationPoint( 101, 88, 0 )
+					.update();
+
+			this.lwing = this.body.addChild( 
+				new Sprite3D()
+					.setClassName('wing')
+					.setPosition( 100, -65, 0 )
+					.setTransformString("_p _rz _ry")
+					.setTransformOrigin( "0px", "130px" )
+					.setRotation( 0, 40, -60 )
+					.update()
+			);
+
+			this.rwing = this.body.addChild( 
+				new Sprite3D()
+					.setClassName('wing')
+					.setPosition( 100, -65, 0 )
+					.setTransformString("_p _rz _ry")
+					.setTransformOrigin( "0px", "130px" )
+					.setRotation( 0, -40, -60 )
+					.update()
+			);
+
+			this.flapOffset = Math.random() * Math.PI;
+		}
+
+		Butterfly.prototype.body = null;
+		Butterfly.prototype.lwing = null;
+		Butterfly.prototype.rwing = null;
+		Butterfly.prototype.flapOffset = null;
+		Butterfly.prototype.flap = function(t) {
+			var a = ( Math.cos(this.flapOffset+t) + 1 ) * 65 + 10;
+
+			this.lwing.setRotationY( a ).update();
+			this.rwing.setRotationY( -a ).update();
+
+			var r = 4,t = 8;
+
+			this.body
+				.move( Math.random() * t - r, Math.random() * t - r, Math.random() * t - r )
+				.rotateY( Math.random() * t - r )
+				.update();
+		}
+
+		</script>
+
+	</head>
+	<body>
+		<script src="borders/borders.js" type="text/javascript"></script>
+	</body>
 </html>
